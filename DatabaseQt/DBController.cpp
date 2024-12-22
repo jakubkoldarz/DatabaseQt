@@ -1,16 +1,18 @@
 #include "DBController.h"
 
-/// <summary>
-/// Wyświetla wiadomość na konsoli 
-/// </summary>
-/// <param name="msg"></param>
-void DBController::log(const QString& msg) const
+void DBController::log(const QString& msg, Type type) const
 {
 	if (msg.isEmpty())
 		return;
 
-	cout << "db [" << this->name.toStdString() << "]: ";
-	cout << msg.toStdString();
+	Color color = Color(type);
+
+	TerminalColor::SetColor(Color::LightBlue);
+	cout << "[" << this->name.toStdString() << "]: ";
+	TerminalColor::SetColor(Color::White);
+
+	TerminalColor::PrintInColor(msg.toStdString(), color);
+
 	cout << "\n";
 }
 
@@ -20,7 +22,7 @@ DBController::DBController(const QString& file)
 	QFileInfo filepath(file);
 	if (filepath.suffix() != "db")
 	{
-		cout << "Cannot create connection with database: Invalid file type\n";
+		cout << "db: Nie udało się nawiązać połączenia z bazą danych: Niepoprawny typ pliku\n";
 		return;
 	}
 
@@ -39,9 +41,9 @@ DBController::DBController(const QString& file)
 
 	// Sprawdzenie połączenia
 	if (!this->conn.open())
-		this->log(msg);
+		this->log(msg, Type::Error);
 	else
-		this->log("Pomyślnie połączono się z bazą danych");
+		this->log("Pomyślnie połączono się z bazą danych", Type::Connection);
 }
 
 DBController::~DBController()
@@ -50,41 +52,73 @@ DBController::~DBController()
 		return;
 	
 	// Usuwanie modeli, aby zwolnić zasoby
-	for (auto model : this->models) {
-		model->revertAll();
-		delete model; 
+	if (this->saveStatus)
+	// Jeżeli użytkownik chce zapisać
+	{
+		this->log("Zmiany zostały zapisane", Type::Success);
+		for (auto &model : this->models) {
+			model->submitAll();
+			delete model; 
+		}
+	}
+	else
+	// Jeżeli użytkownik nie chce zapisywać
+	{
+		this->log("Zmiany zostały odrzucone", Type::Error);
+		for (auto &model : this->models) {
+			model->revertAll();
+			delete model;
+		}
 	}
 	this->models.clear();
 
 	// Zamknięcie połączenia z bazą danych
 	if (this->conn.isOpen())
 	{
-		this->log("Zamykanie połączenia z bazą danych\n\n");
+		this->log("Zamykanie połączenia z bazą danych\n", Type::Disconnection);
 		this->conn.close();
 		this->conn = QSqlDatabase();
 		QSqlDatabase::removeDatabase(this->connectionID);
 	}
 }
 
-bool DBController::Query(const QString& query)
-{
-	return false;
-}
-
-/// <summary>
-/// Zwraca wartość logiczną na podstawie statusu połączenia z bazą danych
-/// </summary>
-/// <returns></returns>
-bool DBController::IsOpen()
+bool DBController::IsOpen() const
 {
 	return this->conn.isOpen();
 }
 
-/// <summary>
-/// Zwraca wskaźnik na obiekt QSqlTableModel reprezentujący tabele w bazie danych
-/// </summary>
-/// <param name="table">Nazwa tabeli</param>
-/// <returns></returns>
+void DBController::SetSaveStatus(bool newStatus)
+{
+	this->saveStatus = newStatus;
+}
+
+bool DBController::DropTable(const QString& table)
+{
+	// Utworzenie polecenia do bazy danych
+	QSqlQuery query(this->conn);
+	QString queryString = QString("DROP TABLE IF EXISTS %1").arg(table);
+
+	// Wypisanie na konsole 
+	this->log(queryString);
+
+	// Wykonanie polecenia
+	if (!query.exec(queryString)) {
+		QString errorMsg = QString("Nie udało się usunąć tabeli '%1': %2").arg(table, query.lastError().text());
+		this->log(errorMsg, Type::Error);
+		return false;
+	}
+
+	// Wypisanie na konsole jeżeli operacja się powiodła
+	QString successMsg = QString("Tabela '%1' została pomyślnie usunięta.").arg(table);
+	this->log(successMsg, Type::Success);
+
+	// Usunięcie modelu
+	delete this->models[table];
+	this->models.remove(table);
+
+	return true;
+}
+
 QSqlTableModel* DBController::GetTableModel(const QString& table)
 {
 	// Jeżeli istnieje już podany model dla tabeli
@@ -103,16 +137,15 @@ QSqlTableModel* DBController::GetTableModel(const QString& table)
 	// Wczytanie danych do modelu
 	model->select();
 
+	// Zablokowanie automatycznego zapisywania danych
+	model->setEditStrategy(QSqlTableModel::OnManualSubmit);
+
 	// Dodanie do kolekcji wszystkich modelów
 	this->models.insert(table, model);
 
 	return this->models[table];
 }
 
-/// <summary>
-/// Zwraca listę tabel z bazy danych
-/// </summary>
-/// <returns></returns>
 QStringList DBController::GetTables() const
 {
 	QStringList tables = this->conn.tables();

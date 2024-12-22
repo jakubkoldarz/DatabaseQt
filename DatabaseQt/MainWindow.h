@@ -27,14 +27,25 @@ private:
     QMap<QString, DBController*> databases;
     QTabWidget* dbTabs;
 
+    /// <summary>
+    /// Wczytuje dane z bazy danych do zakładek w oknie głównym
+    /// </summary>
     void setupTabs(const QString& tabName);
+    /// <summary>
+    /// Usuwa połączenie z bazą danych oraz czyści zakładki
+    /// </summary>
     void deleteDatabaseConnection();
 public:
     explicit MainWindow(QWidget* parent = nullptr);
     ~MainWindow();
 private slots:
+    /// <summary>
+    ///  Otwiera okienko do wyboru pliku, a następnie łączy się z bazą danych
+    /// </summary>
     void onLoadButtonClicked();
     void onCloseButtonClicked();
+    void onDBCloseRequest(int index);
+    void onTableRemoveRequest(int index);
 };
 
 #endif // MAINWINDOW_H
