@@ -24,10 +24,10 @@ class MainWindow : public QMainWindow
     Q_OBJECT
 
 private:
-    DBController* db;
-    QTabWidget* tabs;
+    QMap<QString, DBController*> databases;
+    QTabWidget* dbTabs;
 
-    void setupTabs();
+    void setupTabs(const QString& tabName);
     void deleteDatabaseConnection();
 public:
     explicit MainWindow(QWidget* parent = nullptr);
