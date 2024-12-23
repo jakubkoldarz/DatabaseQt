@@ -4,6 +4,8 @@
 #define MAINWINDOW_H
 
 #include "DBController.h"
+#include "InsertRowsDialog.h"
+#include "CreateNewDialog.h"
 
 #include <iostream>
 
@@ -46,6 +48,7 @@ private:
     /// </summary>
     /// <returns>Nazwa aktywnej zakładki</returns>
     QString activeTableName();
+    void updateIcon();
 public:
     explicit MainWindow(QWidget* parent = nullptr);
     ~MainWindow();
@@ -54,7 +57,7 @@ private slots:
     ///  Otwiera okienko do wyboru pliku, a następnie łączy się z bazą danych
     /// </summary>
     void onLoadButtonClicked();
-    void onCloseButtonClicked();
+    void onNewButtonClicked();
     void onDBCloseRequest(int index);
     void onTableRemoveRequest(int index);
     void onTableContextMenu(const QPoint& pos);

@@ -65,6 +65,8 @@ public:
 	/// </summary>
 	/// <returns>Lista tabel zawartych w bazie danych</returns>
 	QStringList GetTables() const;
-	void RemoveRows(const QString& table, QSqlTableModel* model, const QModelIndexList selectedRows);
+	void RemoveRows(const QString& table, const QModelIndexList selectedRows);
+	void InsertRows(const QString& table, int startIndex, int rowsCount);
+	void createNewDatabase(const QString& name);
 };
 

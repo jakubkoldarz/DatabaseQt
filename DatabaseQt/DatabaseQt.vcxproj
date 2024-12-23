@@ -97,7 +97,9 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="CreateNewDialog.cpp" />
     <ClCompile Include="DBController.cpp" />
+    <ClCompile Include="InsertRowsDialog.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="MainWindow.cpp" />
     <ClCompile Include="TerminalColor.cpp" />
@@ -106,12 +108,21 @@
     <QtMoc Include="MainWindow.h" />
   </ItemGroup>
   <ItemGroup>
+    <QtMoc Include="CreateNewDialog.h" />
     <ClInclude Include="DBController.h" />
+    <QtMoc Include="InsertRowsDialog.h" />
     <ClInclude Include="resource.h" />
     <ClInclude Include="TerminalColor.h" />
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="DatabaseQt.rc" />
+  </ItemGroup>
+  <ItemGroup>
+    <Image Include="dbOffline.png" />
+    <Image Include="dbOnline.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <QtRcc Include="Resource.qrc" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Condition="Exists('$(QtMsBuild)\qt.targets')">

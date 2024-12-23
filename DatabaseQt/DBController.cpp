@@ -57,7 +57,11 @@ DBController::~DBController()
 	{
 		this->log("Zmiany zostały zapisane", Type::Success);
 		for (auto &model : this->models) {
-			model->submitAll();
+			int saveResult = model->submitAll();
+			
+			if (!saveResult) 
+				this->log(QString("Wystąpił błąd podczas zapisu: %1").arg(model->lastError().text()), Type::Error);
+			
 			delete model; 
 		}
 	}
@@ -75,7 +79,7 @@ DBController::~DBController()
 	// Zamknięcie połączenia z bazą danych
 	if (this->conn.isOpen())
 	{
-		this->log("Zamykanie połączenia z bazą danych\n", Type::Disconnection);
+		this->log("Zamykanie połączenia z bazą danych", Type::Disconnection);
 		this->conn.close();
 		this->conn = QSqlDatabase();
 		QSqlDatabase::removeDatabase(this->connectionID);
@@ -150,10 +154,16 @@ QStringList DBController::GetTables() const
 	return tables;
 }
 
-void DBController::RemoveRows(const QString& table, QSqlTableModel* model, const QModelIndexList selectedRows)
+void DBController::RemoveRows(const QString& table, const QModelIndexList selectedRows)
 {
 	for (const QModelIndex& index : selectedRows)
-		model->removeRow(index.row());
+		this->models[table]->removeRow(index.row());
 
 	this->log(QString("Usuwanie wierszy z tabeli '%1'").arg(table), Type::Query);
+}
+
+void DBController::InsertRows(const QString& table, int startIndex, int rowsCount)
+{
+	this->log(QString("Dodawanie %1 wierszy do tabeli '%2'").arg(rowsCount).arg(table));
+	this->models[table]->insertRows(0, rowsCount);
 }

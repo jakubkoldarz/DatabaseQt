@@ -39,6 +39,9 @@ void MainWindow::onLoadButtonClicked()
 	
 	// Wczytanie tabel do zakładek
 	this->setupTabs(fileName);
+
+	// Aktualizacja ikonki
+	this->updateIcon();
 }
 
 void MainWindow::setupTabs(const QString& tabName)
@@ -135,8 +138,19 @@ QString MainWindow::activeTableName()
 	return QString(activeTabWidged->tabText(activeIndexTable));
 }
 
+void MainWindow::updateIcon()
+{
+	if(this->databases.size() > 0)
+		this->setWindowIcon(QIcon(":/new/icons/dbOnline.png"));
+	else
+		this->setWindowIcon(QIcon(":/new/icons/dbOffline.png"));
+}
+
 MainWindow::MainWindow(QWidget* parent)
 {
+	// Ustawienie ikonki dla aplikacji
+	this->updateIcon();
+
 	// Ustawienie rozmiaru okna oraz zablokowanie zmiany rozmiaru
 	this->setFixedSize(1200, 700);
 	this->setWindowTitle("Aplikacja Bazodanowa");
@@ -153,7 +167,7 @@ MainWindow::MainWindow(QWidget* parent)
 	buttonNew->setStyleSheet(buttonStyle);
 
 	connect(buttonLoad, &QPushButton::clicked, this, &MainWindow::onLoadButtonClicked);
-	connect(buttonNew, &QPushButton::clicked, this, &MainWindow::onCloseButtonClicked);
+	connect(buttonNew, &QPushButton::clicked, this, &MainWindow::onNewButtonClicked);
 
 	// Utworzenie kontenera dla zakładek z baz danych
 	this->dbTabs = new QTabWidget(this);
@@ -207,9 +221,62 @@ MainWindow::~MainWindow()
 	}
 }
 
-void MainWindow::onCloseButtonClicked()
+void MainWindow::onNewButtonClicked()
 {
-	this->deleteDatabaseConnection();
+	// Wyświetlenie okienka do pobrania nazwy nowej bazy danych
+	CreateNewDialog dialog(this);
+	QString newDatabaseName;
+	if (dialog.exec() == QDialog::Accepted)
+		newDatabaseName = dialog.GetNewName();
+
+	if (newDatabaseName.isEmpty())
+	{
+		QMessageBox::critical(
+			this,
+			"Wystąpił błąd",
+			"Wystąpił błąd podczas dodawania nowej bazy danych. Podano pusty ciąg znaków. Proszę wpisać poprawny ciąg znaków"
+		);
+
+		return;
+	}
+
+	// Sprawdzenie czy nazwa nie zawiera żadnych niepoprawnych znaków
+	QRegularExpression regex("^[a-zA-Z0-9]+$");
+	int matchResult = regex.match(newDatabaseName).hasMatch();
+	if (!matchResult)
+	{
+		QMessageBox::critical(
+			this,
+			"Wystąpił błąd",
+			"Wystąpił błąd podczas dodawania nowej bazy danych. Nazwa nowej bazy danych może zawierać tylko małe lub duże litery bez polskich znaków."
+		);
+		return;
+	}
+
+	// Utworzenie ścieżki do nowej bazy danych, (na pulpit)
+	QString desktopPath = QStandardPaths::writableLocation(QStandardPaths::DesktopLocation);
+	QString newDatabasePath = QString("%1/%2.db").arg(desktopPath).arg(newDatabaseName);
+
+	// Sprawdzenie czy przypadkiem nie istnieje już taki plik na pulpicie lub w aktualnie wczytanych bazach danych
+	QFileInfo fileInfo(newDatabasePath);
+	if (fileInfo.exists() || this->databases.contains(QString("%1.db").arg(newDatabaseName)))
+	{
+		QMessageBox::warning(
+			this,
+			"Wystąpił błąd",
+			"Baza danych z podaną nazwą już istnieje. Spróbuj użyć innej nazwy dla nowej bazy danych."
+		);
+		return;
+	}
+
+	// Utworznie nowego połączenia
+	this->databases[fileInfo.fileName()] = new DBController(newDatabasePath);
+
+	// Wczytanie tabel do zakładek
+	this->setupTabs(fileInfo.fileName());
+
+	// Aktualizacja ikonki
+	this->updateIcon();
 }
 
 void MainWindow::onDBCloseRequest(int index)
@@ -256,6 +323,9 @@ void MainWindow::onDBCloseRequest(int index)
 	this->dbTabs->removeTab(index);
 	delete this->databases[tabName];
 	this->databases.remove(tabName);
+
+	// Aktualizacja ikonki aplikacji
+	this->updateIcon();
 }
 
 void MainWindow::onTableRemoveRequest(int index)
@@ -313,6 +383,7 @@ void MainWindow::onTableContextMenu(const QPoint& pos)
 	// Utworzenie menu konekstowego
 	QMenu contextMenu(this);
 	QAction* deleteAction = contextMenu.addAction("Usuń zaznaczone wiersze");
+	QAction* insertRowsAction = contextMenu.addAction("Wstaw wiersze");
 	QAction* selectedAction = contextMenu.exec(senderTableView->viewport()->mapToGlobal(pos));
 
 	if (selectedAction == deleteAction)
@@ -344,9 +415,17 @@ void MainWindow::onTableContextMenu(const QPoint& pos)
 
 		// Usunięcie wierszy
 		QString tableName = activeTableName();
-		this->databases[this->activeDatabaseName()]->RemoveRows(tableName, model, selectedRows);
+		this->databases[this->activeDatabaseName()]->RemoveRows(tableName, selectedRows);
 
 		// Odświeżenie widoku tabeli
 		senderTableView->viewport()->update();
+	}
+	else if (selectedAction == insertRowsAction)
+	{
+		AddRowsDialog dialog(this);
+		if (dialog.exec() == QDialog::Accepted) {
+			int rowsToAdd = dialog.GetNumberOfRows();
+			this->databases[activeDatabaseName()]->InsertRows(activeTableName(), 0, rowsToAdd);
+		}
 	}
 }

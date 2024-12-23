@@ -1,0 +1,6 @@
+<RCC>
+    <qresource prefix="/new/icons">
+        <file>dbOffline.png</file>
+        <file>dbOnline.png</file>
+    </qresource>
+</RCC>
