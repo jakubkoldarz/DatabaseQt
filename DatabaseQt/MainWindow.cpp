@@ -9,7 +9,7 @@ void MainWindow::onLoadButtonClicked()
 
 	// Przypisanie opisu okienka oraz filtrów do plików
 	QString caption = "Otwórz plik";
-	QString filters = "Baza danych (*.db);;Wszystkie pliki (*);;";
+	QString filters = "Baza danych (*.db)";
 
 	// Pobranie ścieżki do pliku za pomocą okienka dialogowego
 	QString filepath = QFileDialog::getOpenFileName(this, caption, desktopPath, filters);
@@ -52,17 +52,24 @@ void MainWindow::setupTabs(const QString& tabName)
 	tablesTabs->setTabsClosable(true);
 	connect(tablesTabs, &QTabWidget::tabCloseRequested, this, &MainWindow::onTableRemoveRequest);
 
+	// Ustawienia dla menu kontekstowego
+	tablesTabs->setContextMenuPolicy(Qt::NoContextMenu);
+	connect(tablesTabs, &QTableView::customContextMenuRequested, this, &MainWindow::onTableContextMenu);
+
 	for (int i = 0; i < tablesCount; i++)
 	{
 		// Utworzenie zakładki
-		QWidget* singleTab = new QWidget(this->dbTabs);
+		QWidget* singleTab = new QWidget(tablesTabs);
 
 		// Utworzenie układu dla zakładki
 		QVBoxLayout* layoutTemp = new QVBoxLayout(singleTab);
 
 		// Utworzenie tabeli z danymi z bazy danych
-		QTableView* singleTable = new QTableView(this);
+		QTableView* singleTable = new QTableView(tablesTabs);
 		singleTable->setModel(this->databases[tabName]->GetTableModel(tables[i]));
+
+		singleTable->setContextMenuPolicy(Qt::CustomContextMenu);
+		connect(singleTable, &QTableView::customContextMenuRequested, this, &MainWindow::onTableContextMenu);
 
 		// Dodanie tabeli do układu 
 		layoutTemp->addWidget(singleTable);
@@ -110,6 +117,22 @@ void MainWindow::deleteDatabaseConnection()
 
 	//delete this->db;
 	//this->db = nullptr;
+}
+
+QString MainWindow::activeDatabaseName()
+{
+	int activeIndex = this->dbTabs->currentIndex();
+	return QString(this->dbTabs->tabText(activeIndex));
+}
+
+QString MainWindow::activeTableName()
+{
+	int activeIndexDB = this->dbTabs->currentIndex();
+	QWidget* activeWidget = this->dbTabs->widget(activeIndexDB);
+	QTabWidget* activeTabWidged = qobject_cast<QTabWidget*>(activeWidget);
+	int activeIndexTable = activeTabWidged->currentIndex();
+
+	return QString(activeTabWidged->tabText(activeIndexTable));
 }
 
 MainWindow::MainWindow(QWidget* parent)
@@ -201,8 +224,7 @@ void MainWindow::onDBCloseRequest(int index)
 
 	// Wyświetlenie powiadomienia
 	QString title("Próba zamknięcia połączenia z bazą danych");
-	QString text("Czy chcesz zapisać zmiany w bazie danych przed zamknięciem połączenia?");
-
+	QString text("Czy chcesz zapisać zmiany w bazie danych przed zamknięciem połączenia? Jeśli nie zapiszesz zmian, wszystkie niezapisane dane zostaną utracone po zamknięciu połączenia z bazą. Możesz również anulować zamknięcie, aby dokończyć wprowadzanie zmian. Upewnij się, że nie stracisz ważnych danych.");
 	int result = QMessageBox::question(
 		this, title, text,
 		QMessageBox::Yes | QMessageBox::No | QMessageBox::Cancel,
@@ -262,16 +284,69 @@ void MainWindow::onTableRemoveRequest(int index)
 	// Pobranie nazwy tabeli do usunięcia
 	QString tableName = senderTabs->tabText(index);
 
-	// Pobranie nazwy bazy danych z której będziemy usuwać tabele
-	int currentActiveDatabaseIndex = this->dbTabs->currentIndex();
-	QString dbName = this->dbTabs->tabText(currentActiveDatabaseIndex);
-	
 	// Wykonanie usuwania tabeli na bazie danych
-	int dropResult = this->databases[dbName]->DropTable(tableName);
+	int dropResult = this->databases[activeDatabaseName()]->DropTable(tableName);
 
 	if (dropResult == false)
+	{
+		QString errorMsg;
+		QMessageBox::critical(
+			this,
+			"Operacja usuwania tabeli zakończona niepowodzeniem",
+			"Podczas próby usunięcia tabeli wystąpił nieoczekiwany błąd. Może to wynikać z problemów z połączeniem z bazą danych, braku odpowiednich uprawnień lub innych nieprzewidzianych okoliczności."
+		);
 		return;
+	}
 
 	// Usunięcie zakładki w przypadku powodzenia 
 	senderTabs->removeTab(index);
+}
+
+void MainWindow::onTableContextMenu(const QPoint& pos)
+{
+	// Pobranie widoku tabeli, który wywołał menu kontekstowe
+	QTableView* senderTableView = qobject_cast<QTableView*>(sender());
+	
+	// Pobranie modelu tabeli
+	QSqlTableModel* model = qobject_cast<QSqlTableModel*>(senderTableView->model());
+
+	// Utworzenie menu konekstowego
+	QMenu contextMenu(this);
+	QAction* deleteAction = contextMenu.addAction("Usuń zaznaczone wiersze");
+	QAction* selectedAction = contextMenu.exec(senderTableView->viewport()->mapToGlobal(pos));
+
+	if (selectedAction == deleteAction)
+	{
+		// Pobranie zaznaczonych wierszów
+		QModelIndexList selectedRows = senderTableView->selectionModel()->selectedRows();
+
+		// Zakończenie usuwania jeśli nie wybrano żadnego wiersza
+		if (selectedRows.isEmpty())
+		{
+			QString title("Brak zaznaczenia");
+			QString txt("Nie wybrano żadnego wiersza do usunięcia. Pamiętaj, że należy wybrać cały wiersz do usunięcia a nie tylko poszczególne komórki.");
+			QMessageBox::information(this, title, txt, QMessageBox::Ok);
+			return;
+		}
+
+		// Potwierdzenie usunięcia
+		int result = QMessageBox::question(
+			this,
+			"Potwierdzenie usunięcia wierszy",
+			"Czy na pewno chcesz usunąć wszystkie wybrane wiersze?",
+			QMessageBox::Yes | QMessageBox::No,
+			QMessageBox::Yes
+		);
+
+		// Zatrzymanie usuwania
+		if (result == QMessageBox::No)
+			return;
+
+		// Usunięcie wierszy
+		QString tableName = activeTableName();
+		this->databases[this->activeDatabaseName()]->RemoveRows(tableName, model, selectedRows);
+
+		// Odświeżenie widoku tabeli
+		senderTableView->viewport()->update();
+	}
 }

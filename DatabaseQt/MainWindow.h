@@ -18,6 +18,7 @@
 #include <QTableView>
 #include <QSqlTableModel>
 #include <QMessageBox>
+#include <QMenu>
 
 class MainWindow : public QMainWindow
 {
@@ -35,6 +36,16 @@ private:
     /// Usuwa połączenie z bazą danych oraz czyści zakładki
     /// </summary>
     void deleteDatabaseConnection();
+    /// <summary>
+    /// Pobiera nazwe aktualnie wybranej zakładki
+    /// </summary>
+    /// <returns>Nazwa aktywnej zakładki</returns>
+    QString activeDatabaseName();
+    /// <summary>
+    /// Pobiera nazwe aktualnie wybranej zakładki tabeli w bazie danych
+    /// </summary>
+    /// <returns>Nazwa aktywnej zakładki</returns>
+    QString activeTableName();
 public:
     explicit MainWindow(QWidget* parent = nullptr);
     ~MainWindow();
@@ -46,6 +57,7 @@ private slots:
     void onCloseButtonClicked();
     void onDBCloseRequest(int index);
     void onTableRemoveRequest(int index);
+    void onTableContextMenu(const QPoint& pos);
 };
 
 #endif // MAINWINDOW_H

@@ -126,9 +126,7 @@ QSqlTableModel* DBController::GetTableModel(const QString& table)
 		return this->models[table];
 
 	// Wypisanie wiadomości na konsole o pobraniu danych z tabeli
-	QString msg("SELECT * FROM ");
-	msg += table;
-	this->log(msg);
+	this->log(QString("Select * FROM '%1'").arg(table));
 
 	// Utworzenie nowego modelu
 	QSqlTableModel* model = new QSqlTableModel(nullptr, this->conn);
@@ -150,4 +148,12 @@ QStringList DBController::GetTables() const
 {
 	QStringList tables = this->conn.tables();
 	return tables;
+}
+
+void DBController::RemoveRows(const QString& table, QSqlTableModel* model, const QModelIndexList selectedRows)
+{
+	for (const QModelIndex& index : selectedRows)
+		model->removeRow(index.row());
+
+	this->log(QString("Usuwanie wierszy z tabeli '%1'").arg(table), Type::Query);
 }
