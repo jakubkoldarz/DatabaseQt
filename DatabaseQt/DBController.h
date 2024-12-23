@@ -36,7 +36,7 @@ private:
 	/// <param name="msg">Wiadomość, która zostanie wypisana na konsoli</param>
 	void log(const QString& msg, Type type = Type::Query) const;
 public:
-	DBController(const QString& file);
+	DBController(const QString& file, bool creatingNew = false);
 	~DBController();
 	/// <summary>
 	/// Zwraca wartość logiczną na podstawie statusu połączenia z bazą danych
@@ -65,8 +65,8 @@ public:
 	/// </summary>
 	/// <returns>Lista tabel zawartych w bazie danych</returns>
 	QStringList GetTables() const;
-	void RemoveRows(const QString& table, const QModelIndexList selectedRows);
+	void RemoveRows(const QString& table, const QModelIndexList& selectedRows);
 	void InsertRows(const QString& table, int startIndex, int rowsCount);
-	void createNewDatabase(const QString& name);
+	bool Query(const QString& queryString);
 };
 

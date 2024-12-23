@@ -21,4 +21,4 @@ public:
     QString GetNewName() const;
 };
 
-#endif // ADDROWSDIALOG_H
+#endif // CREATENEWDIALOG_H

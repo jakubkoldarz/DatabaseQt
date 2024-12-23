@@ -6,6 +6,7 @@
 #include "DBController.h"
 #include "InsertRowsDialog.h"
 #include "CreateNewDialog.h"
+#include "CreateNewTableDialog.h"
 
 #include <iostream>
 
@@ -21,6 +22,7 @@
 #include <QSqlTableModel>
 #include <QMessageBox>
 #include <QMenu>
+#include <QHeaderView>
 
 class MainWindow : public QMainWindow
 {
@@ -61,6 +63,7 @@ private slots:
     void onDBCloseRequest(int index);
     void onTableRemoveRequest(int index);
     void onTableContextMenu(const QPoint& pos);
+    void onTableCreatorRequest();
 };
 
 #endif // MAINWINDOW_H

@@ -7,7 +7,7 @@ AddRowsDialog::AddRowsDialog(QWidget* parent)
 	this->setWindowTitle("Wstawianie wierszy");
 
 	// Ustawienia rozmiaru okienka dialogowego
-	this->setMinimumSize(300, 100);
+	this->setFixedSize(300, 100);
 
 	// Ustawienia zakresu ilości wierszy
 	this->spinBox->setMinimum(1);

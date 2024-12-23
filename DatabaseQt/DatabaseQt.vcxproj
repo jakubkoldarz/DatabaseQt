@@ -98,6 +98,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="CreateNewDialog.cpp" />
+    <ClCompile Include="CreateNewTableDialog.cpp" />
     <ClCompile Include="DBController.cpp" />
     <ClCompile Include="InsertRowsDialog.cpp" />
     <ClCompile Include="main.cpp" />
@@ -109,6 +110,7 @@
   </ItemGroup>
   <ItemGroup>
     <QtMoc Include="CreateNewDialog.h" />
+    <QtMoc Include="CreateNewTableDialog.h" />
     <ClInclude Include="DBController.h" />
     <QtMoc Include="InsertRowsDialog.h" />
     <ClInclude Include="resource.h" />

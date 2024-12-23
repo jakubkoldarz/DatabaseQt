@@ -1,6 +1,5 @@
 #include "MainWindow.h"
 
-
 void MainWindow::onLoadButtonClicked()
 {
 	// Pobranie ścieżki do pulpitu użytkownika
@@ -70,6 +69,7 @@ void MainWindow::setupTabs(const QString& tabName)
 		// Utworzenie tabeli z danymi z bazy danych
 		QTableView* singleTable = new QTableView(tablesTabs);
 		singleTable->setModel(this->databases[tabName]->GetTableModel(tables[i]));
+		singleTable->horizontalHeader()->setSectionResizeMode(QHeaderView::Stretch);
 
 		singleTable->setContextMenuPolicy(Qt::CustomContextMenu);
 		connect(singleTable, &QTableView::customContextMenuRequested, this, &MainWindow::onTableContextMenu);
@@ -90,8 +90,14 @@ void MainWindow::setupTabs(const QString& tabName)
 	// Utworzenie układu dla zakładki
 	QVBoxLayout* newTableTabLayout = new QVBoxLayout(newTableTab);
 
-	// Dodanie tabeli do układu 
-	newTableTabLayout->addWidget(new QLabel("Nowa tabela"));
+	// Utworzenie przycisku do otwierania kreatora tabel
+	QPushButton* openTableCreatorButton = new QPushButton("Przejdź do kreatora tabel", newTableTab);
+	openTableCreatorButton->setStyleSheet("padding: 11px 0px; width: 300px;");
+	connect(openTableCreatorButton, &QPushButton::clicked, this, &MainWindow::onTableCreatorRequest);
+	
+	// Dodanie przycisku do układu
+	newTableTabLayout->addWidget(openTableCreatorButton);
+	newTableTabLayout->setAlignment(Qt::AlignCenter);
 
 	// Przypisanie układu do zakładki
 	newTableTab->setLayout(newTableTabLayout);
@@ -270,7 +276,7 @@ void MainWindow::onNewButtonClicked()
 	}
 
 	// Utworznie nowego połączenia
-	this->databases[fileInfo.fileName()] = new DBController(newDatabasePath);
+	this->databases[fileInfo.fileName()] = new DBController(newDatabasePath, true);
 
 	// Wczytanie tabel do zakładek
 	this->setupTabs(fileInfo.fileName());
@@ -427,5 +433,15 @@ void MainWindow::onTableContextMenu(const QPoint& pos)
 			int rowsToAdd = dialog.GetNumberOfRows();
 			this->databases[activeDatabaseName()]->InsertRows(activeTableName(), 0, rowsToAdd);
 		}
+	}
+}
+
+void MainWindow::onTableCreatorRequest()
+{
+	CreateNewTableDialog dialogC(this);
+	if (dialogC.exec() == QDialog::Accepted)
+	{
+		QString queryString = dialogC.GetQueryString();
+		this->databases[activeDatabaseName()]->Query(queryString);
 	}
 }

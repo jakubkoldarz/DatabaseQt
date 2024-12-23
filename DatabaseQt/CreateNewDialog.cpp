@@ -7,7 +7,7 @@ CreateNewDialog::CreateNewDialog(QWidget* parent)
 	this->setWindowTitle("Tworzenie nowej bazy");
 
 	// Ustawienia rozmiaru okienka dialogowego
-	this->setMinimumSize(300, 100);
+	this->setFixedSize(300, 100);
 
 	QVBoxLayout* layout = new QVBoxLayout(this);
 

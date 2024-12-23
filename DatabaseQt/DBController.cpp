@@ -16,7 +16,7 @@ void DBController::log(const QString& msg, Type type) const
 	cout << "\n";
 }
 
-DBController::DBController(const QString& file)
+DBController::DBController(const QString& file, bool creatingNew)
 {
 	// Sprawdzenie rozszerzenia pliku
 	QFileInfo filepath(file);
@@ -43,7 +43,13 @@ DBController::DBController(const QString& file)
 	if (!this->conn.open())
 		this->log(msg, Type::Error);
 	else
+	{
+		// Wypisanie powiadomienia o utworzeniu nowego pliku
+		if(creatingNew)
+			this->log(QString("Utworzono nowy plik z bazą danych w lokalizacji: %1").arg(file));
+		
 		this->log("Pomyślnie połączono się z bazą danych", Type::Connection);
+	}
 }
 
 DBController::~DBController()
@@ -56,7 +62,8 @@ DBController::~DBController()
 	// Jeżeli użytkownik chce zapisać
 	{
 		this->log("Zmiany zostały zapisane", Type::Success);
-		for (auto &model : this->models) {
+		for (auto &model : this->models) 
+		{
 			int saveResult = model->submitAll();
 			
 			if (!saveResult) 
@@ -69,7 +76,8 @@ DBController::~DBController()
 	// Jeżeli użytkownik nie chce zapisywać
 	{
 		this->log("Zmiany zostały odrzucone", Type::Error);
-		for (auto &model : this->models) {
+		for (auto &model : this->models) 
+		{
 			model->revertAll();
 			delete model;
 		}
@@ -106,7 +114,8 @@ bool DBController::DropTable(const QString& table)
 	this->log(queryString);
 
 	// Wykonanie polecenia
-	if (!query.exec(queryString)) {
+	if (!query.exec(queryString)) 
+	{
 		QString errorMsg = QString("Nie udało się usunąć tabeli '%1': %2").arg(table, query.lastError().text());
 		this->log(errorMsg, Type::Error);
 		return false;
@@ -154,7 +163,7 @@ QStringList DBController::GetTables() const
 	return tables;
 }
 
-void DBController::RemoveRows(const QString& table, const QModelIndexList selectedRows)
+void DBController::RemoveRows(const QString& table, const QModelIndexList& selectedRows)
 {
 	for (const QModelIndex& index : selectedRows)
 		this->models[table]->removeRow(index.row());
@@ -166,4 +175,23 @@ void DBController::InsertRows(const QString& table, int startIndex, int rowsCoun
 {
 	this->log(QString("Dodawanie %1 wierszy do tabeli '%2'").arg(rowsCount).arg(table));
 	this->models[table]->insertRows(0, rowsCount);
+}
+
+bool DBController::Query(const QString& queryString)
+{
+	// Utworznie polecenia dla tej bazy danych
+	QSqlQuery query(this->conn);
+
+	this->log(queryString);
+
+	// Wykonanie polecenia na bazie danych
+	if (!query.exec(queryString)) 
+	{
+		QString errorMsg = QString("Nie udało się poprawnie dodać tabeli: %1").arg(query.lastError().text());
+		this->log(errorMsg, Type::Error);
+		return false;
+	}
+
+	this->log("Pomyślnie dodano nową tabele do bazy danych", Type::Success);
+	return true;
 }
