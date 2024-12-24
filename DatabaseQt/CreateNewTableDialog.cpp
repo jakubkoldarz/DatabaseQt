@@ -58,8 +58,7 @@ void CreateNewTableDialog::updateRows()
 
 		// Dodawanie comboboxów
 		QComboBox* combobox = new QComboBox(this->table);
-		combobox->addItem("INTEGER");
-		combobox->addItem("TEXT");
+		combobox->addItems(this->dataTypes);
 
 		this->table->setCellWidget(row, 1, combobox);
 	}
@@ -71,6 +70,12 @@ CreateNewTableDialog::CreateNewTableDialog(QWidget* parent)
 	// Ustawienia okna
 	this->setWindowTitle("Kreator tabel");
 	this->setFixedSize(400, 600);
+
+
+	// Typy danych
+	this->dataTypes << "INTEGER";
+	this->dataTypes << "TEXT";
+	//this->dataTypes << "DATE";
 
 	this->checkboxes->setExclusive(true);
 
@@ -96,6 +101,7 @@ CreateNewTableDialog::CreateNewTableDialog(QWidget* parent)
 	this->insertRows(3);
 
 	this->newTableName = new QLineEdit(this);
+	this->newTableName->setStyleSheet("padding: 5px;");
 	this->newTableName->setPlaceholderText("Wpisz nazwę nowej tabeli");
 
 	layout->addWidget(this->newTableName);
@@ -103,13 +109,17 @@ CreateNewTableDialog::CreateNewTableDialog(QWidget* parent)
 	layout->addWidget(acceptButton);
 }
 
-QString CreateNewTableDialog::GetQueryString() const
+QStringList CreateNewTableDialog::GetQueryString() const
 {
 	if (this->table->rowCount() == 0)
-		return NULL;
+		return QStringList();
 	
+	QStringList data;
+
 	QString queryString("CREATE TABLE IF NOT EXISTS %1 (");
 	queryString = queryString.arg(this->newTableName->text());
+
+	data << this->newTableName->text();
 
 	for (int row = 0; row < this->table->rowCount(); row++)
 	{
@@ -124,7 +134,7 @@ QString CreateNewTableDialog::GetQueryString() const
 				"Wystąpił błąd",
 				"Nazwa kolumny w tabeli nie może być pusta"
 			);
-			return NULL;
+			return QStringList();
 		}
 
 		singleRowQuery = singleRowQuery.arg(itemName->text());
@@ -151,7 +161,9 @@ QString CreateNewTableDialog::GetQueryString() const
 
 	queryString += ")";
 
-	return queryString;
+	data << queryString;
+
+	return data;
 }
 
 void CreateNewTableDialog::onInsertRowRequest(const QPoint& pos)

@@ -68,5 +68,8 @@ public:
 	void RemoveRows(const QString& table, const QModelIndexList& selectedRows);
 	void InsertRows(const QString& table, int startIndex, int rowsCount);
 	bool Query(const QString& queryString);
+	void FilterTable(const QString& table, const QString& col, const QString& params);
+	void SelectAll(const QString& table);
+	bool SaveTable(const QString& table);
 };
 

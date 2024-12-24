@@ -195,3 +195,30 @@ bool DBController::Query(const QString& queryString)
 	this->log("Pomyślnie dodano nową tabele do bazy danych", Type::Success);
 	return true;
 }
+
+void DBController::FilterTable(const QString& table, const QString& col, const QString& params)
+{
+	QString filter = QString("\"%1\" LIKE '%%2%'").arg(col).arg(params);
+	this->log(QString("SELECT * FROM '%1' WHERE %2").arg(table).arg(filter));
+	this->models[table]->setFilter(filter);
+	this->models[table]->select();
+}
+
+void DBController::SelectAll(const QString& table)
+{
+	this->models[table]->select();
+}
+
+bool DBController::SaveTable(const QString& table)
+{
+	bool submitResult = this->models[table]->submitAll();
+	if (submitResult)
+		this->log(QString("Pomyślnie zapisano dane w tabeli '%1'").arg(table), Type::Success);
+	else
+	{
+		QString err = this->models[table]->lastError().text();
+		this->log(QString("Wystąpił błąd podczas próby zapisu danych do tabeli '%1': %2").arg(table).arg(err), Type::Error);
+	}
+
+	return submitResult;
+}

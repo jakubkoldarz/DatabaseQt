@@ -28,13 +28,14 @@ private:
     QTableWidget* table;
     QButtonGroup* checkboxes;
     QLineEdit* newTableName;
+    QStringList dataTypes;
 
     void removeRows(const QModelIndexList& selectedRows);
     void insertRows(int count);
     void updateRows();
 public:
     explicit CreateNewTableDialog(QWidget* parent = nullptr);
-    QString GetQueryString() const;
+    QStringList GetQueryString() const;
 private slots:
     void onInsertRowRequest(const QPoint& pos);
 };

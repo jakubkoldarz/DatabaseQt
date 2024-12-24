@@ -41,6 +41,7 @@ void MainWindow::onLoadButtonClicked()
 
 	// Aktualizacja ikonki
 	this->updateIcon();
+	this->updateSearchbar();
 }
 
 void MainWindow::setupTabs(const QString& tabName)
@@ -53,6 +54,7 @@ void MainWindow::setupTabs(const QString& tabName)
 	QTabWidget* tablesTabs = new QTabWidget(this->dbTabs);
 	tablesTabs->setTabsClosable(true);
 	connect(tablesTabs, &QTabWidget::tabCloseRequested, this, &MainWindow::onTableRemoveRequest);
+	connect(tablesTabs, &QTabWidget::currentChanged, this, &MainWindow::onChangeTab);
 
 	// Ustawienia dla menu kontekstowego
 	tablesTabs->setContextMenuPolicy(Qt::NoContextMenu);
@@ -110,24 +112,6 @@ void MainWindow::setupTabs(const QString& tabName)
 	this->dbTabs->setCurrentIndex(0);
 }
 
-void MainWindow::deleteDatabaseConnection()
-{
-	// Wyczyszczenie zakładek
-	//while (this->tabs->count() > 0)
-	//{
-	//	QWidget* currentTab = this->tabs->widget(0);
-	//	this->tabs->removeTab(0);
-	//	delete currentTab;
-	//}
-
-	//// Usunięcie poprzedniego połączenia
-	//if (this->db == nullptr)
-	//	return;
-
-	//delete this->db;
-	//this->db = nullptr;
-}
-
 QString MainWindow::activeDatabaseName()
 {
 	int activeIndex = this->dbTabs->currentIndex();
@@ -150,6 +134,52 @@ void MainWindow::updateIcon()
 		this->setWindowIcon(QIcon(":/new/icons/dbOnline.png"));
 	else
 		this->setWindowIcon(QIcon(":/new/icons/dbOffline.png"));
+}
+
+void MainWindow::updateSearchbar()
+{
+	QTabWidget* tableTabs = qobject_cast<QTabWidget*>(this->dbTabs->currentWidget());
+
+	if (this->searchbarText == nullptr || this->searchbarColumns == nullptr)
+		return;
+
+	// Reset paska wyszukiwania
+	this->searchbarText->setText("");
+
+	// Reset wyboru kolumny
+	this->searchbarColumns->clear();
+	this->searchbarColumns->addItem("Nazwa kolumny");
+	this->searchbarColumns->setCurrentIndex(0);
+
+	if (this->dbTabs->count() <= 1 || tableTabs == nullptr || tableTabs->count() <= 1 || tableTabs->currentIndex() == tableTabs->count() - 1)
+	{
+		// Blokowanie paska wyszukiwania
+		this->searchbarText->setDisabled(true);
+		this->searchbarColumns->setDisabled(true);
+		this->searchbarButton->setDisabled(true);
+	}
+	else
+	{
+		// Aktywacja wszyskich pól z paska wyszukiwania
+		this->searchbarText->setDisabled(false);
+		this->searchbarColumns->setDisabled(false);
+		this->searchbarButton->setDisabled(false);
+
+		// Pobranie nazw kolumn z aktywnej tabeli
+		QWidget* currentWidget = tableTabs->currentWidget();
+		QTableView* currentTable = currentWidget->findChild<QTableView*>();
+		
+		// Gdy użytkownik przełącza na baze danych w której aktualna zakładka to kreator tabel
+		if (currentTable == nullptr)
+			return;
+
+		// Dodanie do selecta nazw kolumn
+		for (int i = 0; i < currentTable->model()->columnCount(); i++)
+		{
+			QString colName = currentTable->model()->headerData(i, Qt::Horizontal).toString();
+			this->searchbarColumns->addItem(colName);
+		}
+	}
 }
 
 MainWindow::MainWindow(QWidget* parent)
@@ -180,6 +210,7 @@ MainWindow::MainWindow(QWidget* parent)
 
 	// Ustawienie możliwości zamykania zakładek
 	this->dbTabs->setTabsClosable(true);
+	connect(this->dbTabs, &QTabWidget::currentChanged, this, &MainWindow::onChangeTab);
 	
 	// Obsługa zamykania zakładek
 	connect(dbTabs, &QTabWidget::tabCloseRequested, this, &MainWindow::onDBCloseRequest);
@@ -213,6 +244,36 @@ MainWindow::MainWindow(QWidget* parent)
 
 	// Przypisanie głównemu widgetowi układu
 	centralWidget->setLayout(centralLayout);
+
+	// Ustawienia searchbaru
+	QWidget* searchbarContainer = new QWidget(this);
+	searchbarContainer->setStyleSheet("margin-bottom: 10px;");
+	QHBoxLayout* searchbarContainerLayout = new QHBoxLayout(searchbarContainer);
+	searchbarContainer->setLayout(searchbarContainerLayout);
+
+	this->searchbarText = new QLineEdit(this);
+	this->searchbarText->setPlaceholderText("Wyszukaj w tabeli...");
+	this->searchbarText->setStyleSheet("padding: 5px 8px; height: 20px;");
+
+	this->searchbarButton = new QPushButton("Wyszukaj", searchbarContainer);
+	this->searchbarButton->setStyleSheet("padding: 8px 8px; width: 200px; height: 20px;");
+
+	connect(this->searchbarButton, &QPushButton::clicked, this, &MainWindow::onSearchButtonClicked);
+
+	this->searchbarColumns = new QComboBox(searchbarContainer);
+	this->searchbarColumns->setStyleSheet("padding: 8px; height: 20px;");
+	this->searchbarColumns->addItem("Nazwa kolumny");
+	this->searchbarColumns->setCurrentIndex(0);
+
+	searchbarContainerLayout->addWidget(this->searchbarText);
+	searchbarContainerLayout->addWidget(this->searchbarColumns);
+	searchbarContainerLayout->addWidget(this->searchbarButton);
+
+	// Odświeżenie searchbaru
+	this->updateSearchbar();
+
+	// Dodanie searchbaru do głównego układu
+	centralLayout->addWidget(searchbarContainer, 0, 0);
 
 	// Dodajemy QTabWidget do głównego układu
 	centralLayout->addWidget(dbTabs, 1, 0);
@@ -281,8 +342,10 @@ void MainWindow::onNewButtonClicked()
 	// Wczytanie tabel do zakładek
 	this->setupTabs(fileInfo.fileName());
 
-	// Aktualizacja ikonki
+	// Aktualizacja ikonki i paska wyszukiwania
 	this->updateIcon();
+
+	this->updateSearchbar();
 }
 
 void MainWindow::onDBCloseRequest(int index)
@@ -293,7 +356,6 @@ void MainWindow::onDBCloseRequest(int index)
 
 	// Pobranie nazwy zakładki
 	QString tabName = this->dbTabs->tabText(index);
-
 
 	// Wyświetlenie powiadomienia
 	QString title("Próba zamknięcia połączenia z bazą danych");
@@ -330,8 +392,9 @@ void MainWindow::onDBCloseRequest(int index)
 	delete this->databases[tabName];
 	this->databases.remove(tabName);
 
-	// Aktualizacja ikonki aplikacji
+	// Aktualizacja ikonki aplikacji i paska wyszukiwania
 	this->updateIcon();
+	this->updateSearchbar();
 }
 
 void MainWindow::onTableRemoveRequest(int index)
@@ -390,6 +453,7 @@ void MainWindow::onTableContextMenu(const QPoint& pos)
 	QMenu contextMenu(this);
 	QAction* deleteAction = contextMenu.addAction("Usuń zaznaczone wiersze");
 	QAction* insertRowsAction = contextMenu.addAction("Wstaw wiersze");
+	QAction* saveAction = contextMenu.addAction("Zapisz rekordy");
 	QAction* selectedAction = contextMenu.exec(senderTableView->viewport()->mapToGlobal(pos));
 
 	if (selectedAction == deleteAction)
@@ -429,10 +493,19 @@ void MainWindow::onTableContextMenu(const QPoint& pos)
 	else if (selectedAction == insertRowsAction)
 	{
 		AddRowsDialog dialog(this);
-		if (dialog.exec() == QDialog::Accepted) {
+		if (dialog.exec() == QDialog::Accepted) 
+		{
 			int rowsToAdd = dialog.GetNumberOfRows();
 			this->databases[activeDatabaseName()]->InsertRows(activeTableName(), 0, rowsToAdd);
 		}
+	}
+	else if (selectedAction == saveAction)
+	{
+		bool saveResult = this->databases[activeDatabaseName()]->SaveTable(activeTableName());
+		if (saveResult)
+			QMessageBox::information(this, "Sukces", "Pomyślnie zapisano wszystkie zmiany w rekordach do tabeli w bazie danych.");
+		else
+			QMessageBox::critical(this, "Wystąpił błąd", "Wystąpił błąd krytyczny podczas próby zapisu danych do bazy danych.");
 	}
 }
 
@@ -441,7 +514,69 @@ void MainWindow::onTableCreatorRequest()
 	CreateNewTableDialog dialogC(this);
 	if (dialogC.exec() == QDialog::Accepted)
 	{
-		QString queryString = dialogC.GetQueryString();
-		this->databases[activeDatabaseName()]->Query(queryString);
+		QStringList queryData = dialogC.GetQueryString();
+
+		if (queryData.isEmpty())
+		{
+			QMessageBox::critical(this, "Wystąpił błąd", "Nie udało się wygenerować polecenia dla bazy danych.");
+			return;
+		}
+
+		bool queryStatus = this->databases[activeDatabaseName()]->Query(queryData[1]);
+		if (queryStatus == false)
+		{
+			QMessageBox::critical(this, "Wystąpił błąd", "Nie udało się dodać tabeli do bazy danych. Sprawdź konsole po więcej informacji.");
+			return;
+		}
+
+		// Odświeżenie zakładki po dodaniu tabeli
+		QTabWidget* currentDB = qobject_cast<QTabWidget*>(this->dbTabs->currentWidget());
+		
+		// Utworzenie zakładki
+		QWidget* singleTab = new QWidget(currentDB);
+
+		// Utworzenie układu dla zakładki
+		QVBoxLayout* layoutTemp = new QVBoxLayout(singleTab);
+
+		// Utworzenie tabeli z danymi z bazy danych
+		QTableView* singleTable = new QTableView(currentDB);
+		singleTable->setModel(this->databases[activeDatabaseName()]->GetTableModel(queryData[0]));
+		singleTable->horizontalHeader()->setSectionResizeMode(QHeaderView::Stretch);
+
+		singleTable->setContextMenuPolicy(Qt::CustomContextMenu);
+		connect(singleTable, &QTableView::customContextMenuRequested, this, &MainWindow::onTableContextMenu);
+
+		// Dodanie tabeli do układu 
+		layoutTemp->addWidget(singleTable);
+
+		// Przypisanie układu do zakładki
+		singleTab->setLayout(layoutTemp);
+
+		// Dodanie zakładki do listy wszystkich zakładek
+		currentDB->insertTab(0, singleTab, queryData[0]);
+		currentDB->setCurrentIndex(0);
+
+		// Aktualizacja paska wyszukiwania
+		this->updateSearchbar();
 	}
+}
+
+void MainWindow::onSearchButtonClicked()
+{
+	QString tableName = activeTableName();
+	QString columnName = this->searchbarColumns->currentText();
+	QString params = this->searchbarText->text();
+
+	if (this->searchbarColumns->currentIndex() == 0)
+	{
+		this->databases[activeDatabaseName()]->SelectAll(tableName);
+		return;
+	}
+
+	this->databases[activeDatabaseName()]->FilterTable(tableName, columnName, params);
+}
+
+void MainWindow::onChangeTab()
+{
+	this->updateSearchbar();
 }

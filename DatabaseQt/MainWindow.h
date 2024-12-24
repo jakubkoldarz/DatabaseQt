@@ -32,14 +32,15 @@ private:
     QMap<QString, DBController*> databases;
     QTabWidget* dbTabs;
 
+    // Searchbar
+    QLineEdit* searchbarText;
+    QComboBox* searchbarColumns;
+    QPushButton* searchbarButton;
+
     /// <summary>
     /// Wczytuje dane z bazy danych do zakładek w oknie głównym
     /// </summary>
     void setupTabs(const QString& tabName);
-    /// <summary>
-    /// Usuwa połączenie z bazą danych oraz czyści zakładki
-    /// </summary>
-    void deleteDatabaseConnection();
     /// <summary>
     /// Pobiera nazwe aktualnie wybranej zakładki
     /// </summary>
@@ -51,6 +52,7 @@ private:
     /// <returns>Nazwa aktywnej zakładki</returns>
     QString activeTableName();
     void updateIcon();
+    void updateSearchbar();
 public:
     explicit MainWindow(QWidget* parent = nullptr);
     ~MainWindow();
@@ -64,6 +66,8 @@ private slots:
     void onTableRemoveRequest(int index);
     void onTableContextMenu(const QPoint& pos);
     void onTableCreatorRequest();
+    void onSearchButtonClicked();
+    void onChangeTab();
 };
 
 #endif // MAINWINDOW_H
